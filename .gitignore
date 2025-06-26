@@ -1,0 +1,10 @@
+cat <<EOF > .gitignore
+# Node
+/frontend/node_modules/
+/frontend/.env
+
+# Java
+/backend/build/
+/backend/.idea/
+/backend/.env
+EOF
