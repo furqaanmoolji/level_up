@@ -8,6 +8,14 @@ from typing import List
 import schemas
 import crud 
 from fastapi.middleware.cors import CORSMiddleware
+from models.habit import Habit, HabitCompletion
+from datetime import date
+from models import user  # this ensures table gets created
+from database import Base, engine
+from models import quests, subtask  # ensures tables get created
+from crud import quest as quest_crud
+from schemas import QuestCreate, Quest, SubTaskCreate, SubTask
+
 
 
 app = FastAPI()
@@ -19,7 +27,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-habit_model.Base.metadata.create_all(bind=engine)
+
+
+Base.metadata.create_all(bind=engine)
+
 
 
 def get_db():
@@ -46,5 +57,34 @@ def increment_habit_route(habit_id: int, db: Session = Depends(get_db)):
 def delete_habit_route(habit_id: int, db:Session = Depends(get_db)):
     return habit_crud.delete_habit(db, habit_id)
 
+
+# in your FastAPI routes
+@app.get("/habits/{habit_id}/completions")
+def get_completions(habit_id: int, db: Session = Depends(get_db)):
+    completions = db.query(HabitCompletion).filter(HabitCompletion.habit_id == habit_id).all()
+    return [{"date": c.date.isoformat()} for c in completions]
+
+
+@app.get("/create-user")
+def create_user(db: Session = Depends(get_db)):
+    from crud.user import create_test_user
+    return create_test_user(db)
+
+
+@app.get("/quests", response_model=List[Quest])
+def get_quests(db: Session = Depends(get_db)):
+    return quest_crud.get_quests(db)
+
+@app.post("/quests", response_model=Quest)
+def create_quest(quest: QuestCreate, db: Session = Depends(get_db)):
+    return quest_crud.create_quest(db, quest)
+
+@app.post("/quests/{quest_id}/subtasks", response_model=SubTask)
+def add_subtask(quest_id: int, subtask: SubTaskCreate, db: Session = Depends(get_db)):
+    return quest_crud.add_subtask_to_quest(db, quest_id, subtask)
+
+@app.patch("/subtasks/{subtask_id}/toggle", response_model=SubTask)
+def toggle_subtask(subtask_id: int, db: Session = Depends(get_db)):
+    return quest_crud.toggle_subtask_completion(db, subtask_id)
 
 
